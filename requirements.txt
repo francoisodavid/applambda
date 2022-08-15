@@ -4,4 +4,4 @@ pandas==1.2.4
 plotly==5.6.0
 requests==2.25.1
 streamlit==1.10.0
-lightgbm=3.3.2
+lightgbm==3.3.2
