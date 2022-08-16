@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from joblib import load#,dump
@@ -9,7 +8,6 @@ from joblib import load#,dump
 from PIL import Image
 
 st.title('Simple Credit Prediction')
-
 
 @st.cache
 def load_data(nrows):
