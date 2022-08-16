@@ -5,7 +5,8 @@ import plotly
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from joblib import load#,dump
-
+#import shap
+from PIL import Image
 
 st.title('Simple Credit Prediction')
 
@@ -19,18 +20,20 @@ def load_data(nrows):
 df1 = load_data(10000)
 #data_load_state.text("Done! (using st.cache)")
 
+
+
+
 with open(f'model/model_lgb_clf_light.sav', 'rb') as f:
     model = load(f)
     
-if st.checkbox('Show raw data'):
+if st.checkbox('Show sample data'):
     st.subheader('Raw data')
-    st.write(df1.sample(10))
+    st.write(df1.sample(5))
 
-df2=df1.drop(['TARGET'],axis=1, inplace=False)
+df2=df1.drop(['PRED','cluster','TARGET'],axis=1, inplace=False)
 
 with st.sidebar:
     idc = st.selectbox('IDClient:',df2.index)
-
     predictions = np.round(model.predict_proba(df2.loc[df2.index==idc].values)[0][0],decimals=2)
 
     st.subheader('Risk Prediction')
@@ -46,10 +49,47 @@ with st.sidebar:
         'Facteur 2:',
         Feature2list)
 
-#Feature1="EXT_SOURCE_2"
-#Feature2="EXT_SOURCE_3"
+# si on tick on filtre les données du meme cluster que le client
+if st.checkbox('Filter data'):
+    df1=df1.loc[df1.cluster==df1['cluster'].iloc[idc]] #je choisis une valeur par défaut
+    st.write(df1.sample(5))
+
+# on calcule une fois seulement la proba de risque de defaut
+@st.cache
+def risk_proba():
+    ppredictions = model.predict_proba(df2)
+    return ppredictions
+ppredictions=risk_proba()
+df3=df2.copy()
+#st.write(ppredictions[0:5,0])
+df3["proba"]=ppredictions[:,0]
+
+
+if st.checkbox('Show client data'):
+    st.subheader('Raw data')
+    st.write(df1.iloc[idc])
+
+x0=df3.loc[df3.proba<0.5,"proba"]
+x1=df3.loc[df3.proba>0.5,"proba"]
+fig1 = go.Figure()
+fig1.add_trace(go.Histogram(x=x0,name="low risk"))
+fig1.add_trace(go.Histogram(x=x1,name="high risk"))
+print(predictions)
+fig1.add_vline(x=predictions, line_dash = 'dash', line_color = 'firebrick')
+fig1.update_layout(height=400, width=600, title="Risk factor client")#◘xaxis1_title = Feature1, yaxis1_title = Feature2)
+
+# Overlay both histograms
+# Reduce opacity to see both histograms
+fig1.update_traces(opacity=0.75)
+st.plotly_chart(fig1)
+
+image = Image.open('imageshap.png')
+
+st.image(image, caption='Importance of factors wrt to risk', width=400)
+
+
 # Build figure
-fig2=make_subplots(rows=1, cols=3, subplot_titles=("2D chart F1 vs F2", Feature1, Feature2))
+fig2=make_subplots(rows=1, cols=1, subplot_titles=("Factor interaction", Feature1, Feature2))
 #fig2 = go.Figure()
 #fig2.make_subplots(rows=1, cols=2)
 
@@ -58,13 +98,15 @@ fig2.add_trace(
         mode='markers',
         x=df1[Feature1],
         y=df1[Feature2],
+        name="low risk",
         marker=dict(
         color='LightSkyBlue',
         size=2,
         line=dict(
             color='MediumPurple',
             width=0
-            )
+            ),
+        
         ),legendgroup = '1',
         showlegend=True
         ),
@@ -74,7 +116,8 @@ fig2.add_trace(
     go.Scatter(
         mode='markers',
         x=df1.loc[df1.TARGET==1][Feature1],
-        y=df1.loc[df1.TARGET==1][Feature2],
+        y=df1.loc[df1.TARGET==1][Feature2],        
+        name="high risk",
         marker=dict(
         color='crimson',
         size=0,
@@ -87,14 +130,13 @@ fig2.add_trace(
         ),row=1,col=1
     )    
 
-
-print('idc=',idc)
 # Add trace with large marker
 fig2.add_trace(
     go.Scatter(
         mode='markers',
         x=df1.loc[df1.index==idc][Feature1],
-        y=df1.loc[df1.index==idc][Feature2],
+        y=df1.loc[df1.index==idc][Feature2],        
+        name="Client risk",
         marker=dict(
             color='black',
             size=30,
@@ -106,33 +148,40 @@ fig2.add_trace(
         showlegend=True
     ),row=1,col=1            
 )    
-x0 = df1.loc[df1.TARGET==1][Feature1]
-x1 = df1.loc[df1.TARGET==0][Feature1]
-fig2.add_trace(go.Histogram(x=x0,histnorm='percent', nbinsx=100,legendgroup = '2'),row=1,col=2)
-fig2.add_trace(go.Histogram(x=x1,histnorm='percent', nbinsx=100,legendgroup = '2'),row=1,col=2)
-fig2.add_shape(
-    go.layout.Shape(type='line', xref='x', yref='paper',
-                x0=df1.loc[df1.index==idc][Feature1].values[0], y0=0, x1=df1.loc[df1.index==idc][Feature1].values[0], line=dict(color="black", width=3)),
-                row=1, col=2)
-fig2.layout.shapes[0]['yref']='paper'
-# Overlay both histograms
-fig2.update_layout(barmode='overlay',title_text="Positionnement / Facteurs")
-fig2.update_traces(opacity=0.75)
-
-x1 = df1.loc[df1.TARGET==0][Feature2]
-x0 = df1.loc[df1.TARGET==1][Feature2]
-fig2.add_trace(go.Histogram(x=x0,histnorm='percent', nbinsx=100, legendgroup = '3'),row=1,col=3)
-fig2.add_trace(go.Histogram(x=x1,histnorm='percent', nbinsx=100,legendgroup = '3'),row=1,col=3)
-fig2.add_shape(
-    go.layout.Shape(type='line', xref='x', yref='paper',
-                x0=df1.loc[df1.index==idc][Feature2].values[0], y0=0, x1=df1.loc[df1.index==idc][Feature2].values[0], line=dict(color="black", width=3)),
-                row=1, col=3)
-fig2.layout.shapes[0]['yref']='paper'
-# Overlay both histograms
-fig2.update_layout(height=400, width=700, xaxis1_title = Feature1, yaxis1_title = Feature2,  xaxis2_title = Feature1, xaxis3_title = Feature2,  
-                   barmode='overlay',title_text="Positionnement client", legend_tracegroupgap = 20,)
-fig2.update_traces(opacity=0.75)
+fig2.update_layout(height=400, width=400, xaxis1_title = Feature1, yaxis1_title = Feature2)
+#                    barmode='overlay',title_text="Positionnement client", legend_tracegroupgap = 20,)
+# fig2.update_traces(opacity=0.75)
 
 
 
 st.plotly_chart(fig2)
+# x0 = df1.loc[df1.TARGET==1][Feature1]
+# x1 = df1.loc[df1.TARGET==0][Feature1]
+# fig2.add_trace(go.Histogram(x=x0,histnorm='percent', nbinsx=50,legendgroup = '2'),row=1,col=2)
+# fig2.add_trace(go.Histogram(x=x1,histnorm='percent', nbinsx=50,legendgroup = '2'),row=1,col=2)
+# fig2.add_shape(
+#     go.layout.Shape(type='line', xref='x', yref='paper',
+#                 x0=df1.loc[df1.index==idc][Feature1].values[0], y0=0, x1=df1.loc[df1.index==idc][Feature1].values[0], line=dict(color="black", width=3)),
+#                 row=1, col=2)
+# fig2.layout.shapes[0]['yref']='paper'
+# # Overlay both histograms
+# fig2.update_layout(barmode='overlay',title_text="Positionnement / Facteurs")
+# fig2.update_traces(opacity=0.75)
+
+# x1 = df1.loc[df1.TARGET==0][Feature2]
+# x0 = df1.loc[df1.TARGET==1][Feature2]
+# fig2.add_trace(go.Histogram(x=x0,histnorm='percent', nbinsx=50, legendgroup = '3'),row=1,col=3)
+# fig2.add_trace(go.Histogram(x=x1,histnorm='percent', nbinsx=50,legendgroup = '3'),row=1,col=3)
+# fig2.add_shape(
+#     go.layout.Shape(type='line', xref='x', yref='paper',
+#                 x0=df1.loc[df1.index==idc][Feature2].values[0], y0=0, x1=df1.loc[df1.index==idc][Feature2].values[0], line=dict(color="black", width=3)),
+#                 row=1, col=3)
+# fig2.layout.shapes[0]['yref']='paper'
+# # Overlay both histograms
+# fig2.update_layout(height=400, width=700, xaxis1_title = Feature1, yaxis1_title = Feature2,  xaxis2_title = Feature1, xaxis3_title = Feature2,  
+#                    barmode='overlay',title_text="Positionnement client", legend_tracegroupgap = 20,)
+# fig2.update_traces(opacity=0.75)
+
+
+
+# st.plotly_chart(fig2)
