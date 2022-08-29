@@ -115,8 +115,8 @@ with col1:
     
 with col2: 
     #x0=df3[Feature1] 
-    x0=df3xl.loc[df3xl.TARGET==0,Feature1]
-    x1=df3xl.loc[df3xl.TARGET==1,Feature1] # inhomogene a cause de l'absence de selection sur ce facteur.
+    x0=df3xl.loc[df3xl.proba<0.5,Feature1]
+    x1=df3xl.loc[df3xl.proba>0.5,Feature1] # inhomogene a cause de l'absence de selection sur ce facteur.
  
     x_idc2=df3.loc[df3["SK_ID_CURR"]==idc][Feature1] 
     print(x_idc2.values)
@@ -133,8 +133,8 @@ with col2:
     st.plotly_chart(fig2)
     
 with col3:
-    x0=df3xl.loc[df3xl.TARGET==0,Feature2]
-    x1=df3xl.loc[df3xl.TARGET==1,Feature2]
+    x0=df3xl.loc[df3xl.proba<0.5,Feature2]
+    x1=df3xl.loc[df3xl.proba<0.5,Feature2]
     x_idc3=df3.loc[df3["SK_ID_CURR"]==idc][Feature2]     
     fig3 = go.Figure()
     fig3.add_trace(go.Histogram(x=x0,name="lo risk"))
