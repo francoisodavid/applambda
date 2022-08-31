@@ -99,8 +99,8 @@ if st.checkbox('Données client'):
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    x0=df3xl.loc[df3xl.proba<0.5,"proba"]
-    x1=df3xl.loc[df3xl.proba>0.5,"proba"] # ici on a beaucoup de cas avec proba>0.5 du fait de la selection par classe 
+    x0=df3xl.loc[df3xl.proba>0.5,"proba"]
+    x1=df3xl.loc[df3xl.proba<0.5,"proba"] # ici on a beaucoup de cas avec proba>0.5 du fait de la selection par classe 
     fig1 = go.Figure()
     fig1.add_trace(go.Histogram(x=x0,name="lo risk"))
     fig1.add_trace(go.Histogram(x=x1,name="hi risk"))
@@ -115,8 +115,8 @@ with col1:
     
 with col2: 
     #x0=df3[Feature1] 
-    x0=df3xl.loc[df3xl.proba<0.5,Feature1]
-    x1=df3xl.loc[df3xl.proba>0.5,Feature1] # inhomogene a cause de l'absence de selection sur ce facteur.
+    x0=df3xl.loc[df3xl.proba>0.5,Feature1]
+    x1=df3xl.loc[df3xl.proba<0.5,Feature1] # inhomogene a cause de l'absence de selection sur ce facteur.
  
     x_idc2=df3.loc[df3["SK_ID_CURR"]==idc][Feature1] 
     print(x_idc2.values)
@@ -133,7 +133,7 @@ with col2:
     st.plotly_chart(fig2)
     
 with col3:
-    x0=df3xl.loc[df3xl.proba<0.5,Feature2]
+    x0=df3xl.loc[df3xl.proba>0.5,Feature2]
     x1=df3xl.loc[df3xl.proba<0.5,Feature2]
     x_idc3=df3.loc[df3["SK_ID_CURR"]==idc][Feature2]     
     fig3 = go.Figure()
